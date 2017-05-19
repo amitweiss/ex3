@@ -1,0 +1,189 @@
+---
+title: "Ass2"
+author: "Amit"
+date: "5/13/2017"
+output: github_document
+---
+## R Markdown
+# Get the anatomy grey data and create a graph
+# take data from two files
+```{r}
+setwd("/Users/amitweiss/Desktop/ga")
+library(igraph)
+ga.data <- read.csv('ga_edgelist.csv', header=T, stringsAsFactors=F)
+ga.data2 <- read.csv('ga_actors.csv', header=T, stringsAsFactors=F)
+g <- graph.data.frame(ga.data,vertices=ga.data2,directed = F)
+g
+```
+# Coloring the graph
+# Plot the graph
+```{r}
+ 
+V(g)$color <- "blue"
+females <- which(V(g)$gender == "F")
+V(g)$color[females] <- "black" 
+plot(g)
+
+
+```
+# Make one connected graph from the data
+```{r}
+c <- components(g, mode="strong")
+l_comp <- which.max(c$csize)
+g2 <- induced.subgraph(g, V(g)[which(c$membership == l_comp)])
+plot(g2)
+```
+
+# Use betweenness centarilty 
+```{r}
+bet = betweenness(g2, v = V(g2), directed=F,normalized=T)
+bet
+vg_names = V(g2)$name
+maxBet <- vg_names[which(bet  == max(bet))]
+cat("Max Betweenness name: ", maxBet  , ", value: ", max(bet))
+```
+# Use closeness centarilty 
+```{r}
+cl = closeness(g2,v = V(g2), normalized=T)
+cl
+vg_names = V(g2)$name
+maxcl <- vg_names[which(cl  == max(cl))]
+cat("Max Closeness name: ", maxcl  , ", value: ", max(cl))
+```
+# Use eigenvector centarilty 
+```{r}
+eg = evcent(g2, directed=F)$vector
+eg
+vg_names = V(g2)$name
+maxEg <- vg_names[which(eg  == max(eg))]
+cat("Max Eigenvector name: ", maxEg  , ", value: ", max(eg))
+```
+
+# clustering - cluster fast greedy
+# coloring the graph clustring and plot the coloring graph
+# find the modularity of the graph
+# find the size of the clustering
+```{r}
+cfg = cluster_fast_greedy(g2, merges = TRUE, modularity = TRUE,
+      membership = TRUE, weights = E(g2)$weight)
+cat("the modulairty is : ", modularity(cfg))
+cat("\nthe size is: ", sizes(cfg),'(5)')
+
+
+```
+
+```{r}
+V(g2)$color <- cfg$membership
+V(g2)$size <- 5
+plot(cfg, g2)
+```
+
+
+# clustering - cluster edge betweenness
+# coloring the graph clustring and plot the coloring graph
+# find the modularity of the graph
+# find the size of the clustering
+```{r}
+ceb = cluster_edge_betweenness(g2, weights = E(g2)$weight, directed = FALSE,
+  edge.betweenness = TRUE, merges = TRUE, bridges = TRUE,
+  modularity = TRUE, membership = TRUE)
+cat("the modulairty is : ", modularity(ceb))
+cat("\nthe size is: ", sizes(ceb),'(6)')
+
+
+
+```
+# color the graph
+```{r}
+V(g2)$color <- ceb$membership
+V(g2)$size <- 5
+plot(ceb, g2)
+```
+
+# connect to facebook api
+```{r}
+library(devtools)
+install_github("Rfacebook", "pablobarbera", subdir="Rfacebook")
+require (Rfacebook)
+#fb_oauth <- fbOAuth(app_id="262751134188814", app_secret="6b76a6e3639cc94d26ea280c8b477242",extended_permissions = TRUE)
+
+
+```
+# save the fb_oath
+```{r}
+#save(fb_oauth, file="fb_oauth")
+#load("fb_oauth")
+```
+
+# get users from facebook(only users who use the application)
+# get friends of the users and create "friends network"
+# nodes = poeple
+# edges = connections between the friends
+# the graph contains 17 vertexes
+
+```{r}
+token <- 'EAACEdEose0cBAPNu2sjy21iraFeaoyBBap7pMTW4yM4rML48hfsMb29i14s5ebLlPeBTUmg4dTdjjCOhYt5iMfsqB7L2Qiw8HO3B1SdEqjYHH8JvZBg3Upb2gMZAc6dDKNdTcb2ZB4SOZADX9OWCqsvKGIR19ZAbcp7Mpgg9mUO57iThXnJNt'
+me <- getUsers("me", token, private_info=TRUE)
+me$name
+me$hometown
+my_friends <- getFriends(token, simplify = TRUE)
+head(my_friends$id, n = 1) # get lowest user ID
+my_friends_info <- getUsers(my_friends$id, token, private_info = TRUE)
+mat <- getNetwork(token, format = "adj.matrix")
+singletons <- rowSums(mat)==0 # friends who are friends with me alone
+my_graph <- graph.adjacency(mat[!singletons,!singletons],mode = c("undirected"))
+my_graph
+layout <- layout.drl(my_graph,options=list(simmer.attraction=0))
+
+```
+# Plot the firends network
+# We can see that there is two groups of friends
+```{r}
+plot(my_graph, vertex.size=2, 
+     #vertex.label=NA, 
+     vertex.label.cex=0.5,
+     edge.arrow.size=0, edge.curved=TRUE,layout=layout)
+
+```
+
+
+
+# Doing the proccess of stage one again 
+```{r}
+bet = betweenness(my_graph, v = V(my_graph), directed=F,normalized=T)
+bet
+vg_names = V(my_graph)$name
+maxBet <- vg_names[which(bet  == max(bet))]
+cat("Max Betweenness name: ", maxBet  , ", value: ", max(bet))
+```
+```{r}
+cl = closeness(my_graph,v = V(my_graph), normalized=T)
+cl
+vg_names = V(my_graph)$name
+maxcl <- vg_names[which(cl  == max(cl))]
+cat("Max Closeness name: ", maxcl  , ", value: ", max(cl))
+```
+```{r}
+eg = evcent(my_graph, directed=F)$vector
+eg
+vg_names = V(my_graph)$name
+maxEg <- vg_names[which(eg  == max(eg))]
+cat("Max Eigenvector name: ", maxEg  , ", value: ", max(eg))
+```
+```{r}
+cfg = cluster_fast_greedy(my_graph, merges = TRUE, modularity = TRUE,
+      membership = TRUE, weights = E(my_graph)$weight)
+cat("the modulairty is : ", modularity(cfg))
+cat("\nthe size is: ", sizes(cfg),'(2)')
+```
+```{r}
+ceb = cluster_edge_betweenness(my_graph, weights = E(my_graph)$weight, directed = FALSE,
+  edge.betweenness = TRUE, merges = TRUE, bridges = TRUE,
+  modularity = TRUE, membership = TRUE)
+cat("the modulairty is : ", modularity(ceb))
+cat("\nthe size is: ", sizes(ceb),'(2)')
+```
+
+```
+
+
